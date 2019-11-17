@@ -1,4 +1,5 @@
 # MmapDiskImages
+主要功能点:
 将磁盘上的image映射到虚拟内存、大大提高保存在disk里的image的渲染速度
 
 主要技术点:
