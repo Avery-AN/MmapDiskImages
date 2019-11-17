@@ -1,0 +1,2 @@
+# MmapDiskImages
+将磁盘上的image映射到虚拟内存、极大提高保存在disk里的image的渲染速度
