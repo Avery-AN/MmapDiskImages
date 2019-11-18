@@ -54,7 +54,7 @@
             
             NSString *fileSavedPath = nil;
             QAImageFormat *format = nil;
-            BOOL success = [self bsaeinfoProcess:image url:url formatStyle:formatStyle fileSavedPath:&fileSavedPath format:&format];
+            BOOL success = [self baseinfoProcess:image url:url formatStyle:formatStyle fileSavedPath:&fileSavedPath format:&format];
             if (success == NO) {
                 return;
             }
@@ -81,7 +81,7 @@
             
             NSString *fileSavedPath = nil;
             QAImageFormat *format = nil;
-            BOOL success = [self bsaeinfoProcess:image url:url formatStyle:formatStyle fileSavedPath:&fileSavedPath format:&format];
+            BOOL success = [self baseinfoProcess:image url:url formatStyle:formatStyle fileSavedPath:&fileSavedPath format:&format];
             if (success == NO) {
                 return;
             }
@@ -132,7 +132,7 @@
 
 
 #pragma mark - Private Methods -
-- (BOOL)bsaeinfoProcess:(UIImage *)image
+- (BOOL)baseinfoProcess:(UIImage *)image
                     url:(NSURL * _Nonnull)url
             formatStyle:(QAImageFormatStyle)formatStyle
           fileSavedPath:(NSString * __strong *)fileSavedPath
