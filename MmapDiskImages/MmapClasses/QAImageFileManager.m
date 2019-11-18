@@ -24,7 +24,7 @@ static CGFloat FixedPixelSizeRate = 1;   // image的宽高比 (值为1时表示�
  处理原始大小的image时使用
  "pixelSize|bytesPerPixel|bitsPerComponent|bitmapInfo|bytesPerRow"这些内容的长度不要超过metaInfoSize的值
  */
-static int metaInfoSize = 32;
+static int metaInfoSize = 64;
 
 typedef NS_ENUM(NSUInteger, QAImageMmapStyle) {
     QAImageMmapStyle_Cache,
