@@ -207,7 +207,7 @@ void (*mmapAction)(id, SEL, NSString *, QAImageMmapStyle, NSInteger, NSString *,
         munmap(self.bytes, self.totalLength);  // 解除映射
     }
 }
-    
+
 
 #pragma mark - Private Methods -
 - (void)mmapImageFile:(NSString * _Nonnull)fileSavedPath
