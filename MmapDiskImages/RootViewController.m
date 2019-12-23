@@ -56,7 +56,11 @@ static NSString *QAImageCache = @"QACachedImages";
     [self cacheImage_normal];
     
     {
-        UIImage *image = [UIImage imageNamed:@"ne_zha.jpg"];
+        /*
+         NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:@"https://upload-images.jianshu.io/upload_images/2748485-8caa321e4f1aadf5"]];
+         UIImage *image = [UIImage imageWithData:data];
+         */
+         UIImage *image = [UIImage imageNamed:@"ne_zha.jpg"];
         [[QAFastImageDiskCache sharedImageCache] cacheImage:image
                                                         url:[NSURL URLWithString:@"test-url"]
                                                 formatStyle:QAImageFormatStyle_32BitBGRA];
