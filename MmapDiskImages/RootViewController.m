@@ -12,6 +12,10 @@
 static NSString *QAFilesPath = @"QAAllFilesPath";
 static NSString *QAImageCache = @"QACachedImages";
 
+@interface RootViewController ()
+@property (nonatomic) QAFastImageDiskCache *fastImageDiskCache;
+@end
+
 @implementation RootViewController
 
 - (void)viewDidLoad {
@@ -61,9 +65,12 @@ static NSString *QAImageCache = @"QACachedImages";
          UIImage *image = [UIImage imageWithData:data];
          */
         UIImage *image = [UIImage imageNamed:@"ne_zha.jpg"];
-        [[QAFastImageDiskCache sharedImageCache] cacheImage:image
-                                                 identifier:@"test-url"
-                                                formatStyle:QAImageFormatStyle_32BitBGRA];
+        if (!self.fastImageDiskCache) {
+            self.fastImageDiskCache = [QAFastImageDiskCache new];
+        }
+        [self.fastImageDiskCache cacheImage:image
+                                 identifier:@"test-url"
+                                formatStyle:QAImageFormatStyle_32BitBGRA];
     }
 }
 - (void)getCacheAction_normal {
@@ -100,9 +107,12 @@ static NSString *QAImageCache = @"QACachedImages";
     imageView.backgroundColor = [UIColor orangeColor];
     imageView.contentMode = UIViewContentModeScaleAspectFit;
     [self.view addSubview:imageView];
-    
-    [[QAFastImageDiskCache sharedImageCache] requestDiskCachedImage:@"test-url"
-                                                         completion:^(UIImage * _Nullable image) {
+
+    if (!self.fastImageDiskCache) {
+        self.fastImageDiskCache = [QAFastImageDiskCache new];
+    }
+    [self.fastImageDiskCache requestDiskCachedImage:@"test-url"
+                                         completion:^(UIImage * _Nullable image) {
         imageView.image = image;
     } failed:^(NSString * _Nonnull identifierString, NSError * _Nullable error) {
         

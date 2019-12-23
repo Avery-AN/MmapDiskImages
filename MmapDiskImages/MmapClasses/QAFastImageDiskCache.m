@@ -10,8 +10,8 @@
 
 @interface QAFastImageDiskCache ()
 @property (nonatomic) NSMutableDictionary *formatDic;
+@property (nonatomic) NSMutableDictionary *requestBlocks;
 @property (nonatomic, copy) QAImageCacheCompletionBlock cacheCompletionBlock;
-@property (nonatomic, copy) QAImageRequestCompletionBlock requestCompletionBlock;
 @property (nonatomic) dispatch_queue_t queue;
 @property (nonatomic) dispatch_semaphore_t semaphore;
 @end
@@ -19,21 +19,35 @@
 @implementation QAFastImageDiskCache
 
 #pragma mark - Life Cycle -
-+ (instancetype)sharedImageCache {
-    static dispatch_once_t onceToken;
-    static QAFastImageDiskCache *__imageCache = nil;
-    dispatch_once(&onceToken, ^{
-        __imageCache = [[[self class] alloc] init];
-        __imageCache.formatDic = [NSMutableDictionary dictionary];
-        __imageCache.queue = dispatch_queue_create("Avery.QAFastImageDiskCacheManager", DISPATCH_QUEUE_CONCURRENT);
-        __imageCache.semaphore = dispatch_semaphore_create(0);
-    });
-    
-    return __imageCache;
+- (instancetype)init {
+    if (self = [super init]) {
+        self.formatDic = [NSMutableDictionary dictionary];
+        self.requestBlocks = [NSMutableDictionary dictionary];
+        self.queue = dispatch_queue_create("Avery.QAFastImageDiskCacheManager", DISPATCH_QUEUE_CONCURRENT);
+        self.semaphore = dispatch_semaphore_create(0);
+    }
+    return self;
 }
+//+ (instancetype)sharedImageCache {
+//    static dispatch_once_t onceToken;
+//    static QAFastImageDiskCache *__imageCache = nil;
+//    dispatch_once(&onceToken, ^{
+//        __imageCache = [[[self class] alloc] init];
+//        __imageCache.formatDic = [NSMutableDictionary dictionary];
+//        __imageCache.requestBlocks = [NSMutableDictionary dictionary];
+//        __imageCache.queue = dispatch_queue_create("Avery.QAFastImageDiskCacheManager", DISPATCH_QUEUE_CONCURRENT);
+//        __imageCache.semaphore = dispatch_semaphore_create(0);
+//    });
+//
+//    return __imageCache;
+//}
 
 
 #pragma mark - Public Methods -
+- (void)clear {
+    [self.formatDic removeAllObjects];
+    [self.requestBlocks removeAllObjects];
+}
 - (void)cacheImage:(UIImage * _Nonnull)image
         identifier:(NSString * _Nonnull)identifier
        formatStyle:(QAImageFormatStyle)formatStyle {
@@ -102,7 +116,7 @@
                     completion:(QAImageRequestCompletionBlock _Nullable)completion
                     failed:(QAImageRequestFailedBlock _Nullable)failed {
     @autoreleasepool {
-        self.requestCompletionBlock = completion;
+        [self.requestBlocks setObject:completion forKey:identifier];
 
         NSString *key = [identifier md5Hash];
         NSString *fileSavedPath = [QAImageCachePath getImageCachedFilePath:key];
@@ -124,15 +138,16 @@
             QAImageFileManager *fileManager = [QAImageFileManager new];
             UIImage *image = [fileManager processRequest:fileSavedPath
                                              imageFormart:format];
-            
-            if (strongSelf.requestCompletionBlock) {
+            QAImageRequestCompletionBlock completionBlock = [strongSelf.requestBlocks objectForKey:identifier];
+            if (completionBlock) {
                 dispatch_async(dispatch_get_main_queue(), ^{
                     [CATransaction setCompletionBlock:^{
                         NSLog(@" 清理垃圾......");
                         [fileManager clearTheBattlefield];
                     }];
 
-                    strongSelf.requestCompletionBlock(image);
+                    completionBlock(image);
+                    [self.requestBlocks removeObjectForKey:identifier];
                 });
             }
             else {
