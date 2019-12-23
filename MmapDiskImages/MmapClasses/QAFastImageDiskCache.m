@@ -35,26 +35,26 @@
 
 #pragma mark - Public Methods -
 - (void)cacheImage:(UIImage * _Nonnull)image
-               url:(NSURL * _Nonnull)url
+        identifier:(NSString * _Nonnull)identifier
        formatStyle:(QAImageFormatStyle)formatStyle {
-    [self cacheImage:image url:url formatStyle:formatStyle completion:nil];
+    [self cacheImage:image identifier:identifier formatStyle:formatStyle completion:nil];
 }
 - (void)cacheFixedSizeImage:(UIImage * _Nonnull)image
-                        url:(NSURL * _Nonnull)url
+                 identifier:(NSString * _Nonnull)identifier
                 formatStyle:(QAImageFormatStyle)formatStyle {
-    [self cacheFixedSizeImage:image url:url formatStyle:formatStyle completion:nil];
+    [self cacheFixedSizeImage:image identifier:identifier formatStyle:formatStyle completion:nil];
 }
 - (void)cacheImage:(UIImage * _Nonnull)image
-               url:(NSURL * _Nonnull)url
+        identifier:(NSString * _Nonnull)identifier
        formatStyle:(QAImageFormatStyle)formatStyle
         completion:(QAImageCacheCompletionBlock _Nullable)completion {
     @autoreleasepool {
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            self.cacheCompletionBlock = completion;
-            
+        self.cacheCompletionBlock = completion;
+        
+        dispatch_async(self.queue, ^{
             NSString *fileSavedPath = nil;
             QAImageFormat *format = nil;
-            BOOL success = [self baseinfoProcess:image url:url formatStyle:formatStyle fileSavedPath:&fileSavedPath format:&format];
+            BOOL success = [self baseinfoProcess:image identifier:identifier formatStyle:formatStyle fileSavedPath:&fileSavedPath format:&format];
             if (success == NO) {
                 return;
             }
@@ -72,16 +72,16 @@
     }
 }
 - (void)cacheFixedSizeImage:(UIImage * _Nonnull)image
-                        url:(NSURL * _Nonnull)url
+                 identifier:(NSString * _Nonnull)identifier
                 formatStyle:(QAImageFormatStyle)formatStyle
                  completion:(QAImageCacheCompletionBlock _Nullable)completion {
     @autoreleasepool {
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            self.cacheCompletionBlock = completion;
-            
+        self.cacheCompletionBlock = completion;
+        
+        dispatch_async(self.queue, ^{
             NSString *fileSavedPath = nil;
             QAImageFormat *format = nil;
-            BOOL success = [self baseinfoProcess:image url:url formatStyle:formatStyle fileSavedPath:&fileSavedPath format:&format];
+            BOOL success = [self baseinfoProcess:image identifier:identifier formatStyle:formatStyle fileSavedPath:&fileSavedPath format:&format];
             if (success == NO) {
                 return;
             }
@@ -98,52 +98,63 @@
         });
     }
 }
-
-- (void)requestDiskCachedImage:(NSURL * _Nonnull)url
-                    completion:(QAImageRequestCompletionBlock _Nullable)completion {
+- (void)requestDiskCachedImage:(NSString * _Nonnull)identifier
+                    completion:(QAImageRequestCompletionBlock _Nullable)completion
+                    failed:(QAImageRequestFailedBlock _Nullable)failed {
     @autoreleasepool {
         self.requestCompletionBlock = completion;
-        
-        NSString *key = [url.absoluteString md5Hash];
+
+        NSString *key = [identifier md5Hash];
         NSString *fileSavedPath = [QAImageCachePath getImageCachedFilePath:key];
-        // NSLog(@"fileSavedPath: %@", fileSavedPath);
-        
+
+        __weak typeof(self) weakSelf = self;
         [self getFormatWithKey:key
                     completion:^(QAImageFormat *format) {
-                    QAImageFileManager *fileManager = [QAImageFileManager new];
-                    UIImage *image = [fileManager processRequest:fileSavedPath
-                                                    imageFormart:format];
-                    
-                    if (self.requestCompletionBlock) {
-                        dispatch_async(dispatch_get_main_queue(), ^{
-                            [CATransaction setCompletionBlock:^{
-                                [fileManager clearTheBattlefield];
-                            }];
-                            
-                            self.requestCompletionBlock(image);
-                        });
-                    }
-                    else {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+
+            if (!format) {
+                if (failed) {
+                    NSDictionary *errorInfo = [NSDictionary dictionaryWithObjectsAndKeys:@"获取缓存失败", @"info", nil];
+                    NSError *error = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorUnknown userInfo:errorInfo];
+                    failed(identifier, error);
+                }
+                return;
+            }
+            
+            QAImageFileManager *fileManager = [QAImageFileManager new];
+            UIImage *image = [fileManager processRequest:fileSavedPath
+                                             imageFormart:format];
+            
+            if (strongSelf.requestCompletionBlock) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [CATransaction setCompletionBlock:^{
+                        NSLog(@" 清理垃圾......");
                         [fileManager clearTheBattlefield];
-                    }
-            }];
+                    }];
+
+                    strongSelf.requestCompletionBlock(image);
+                });
+            }
+            else {
+                [fileManager clearTheBattlefield];
+            }
+        }];
     }
 }
 
 
 #pragma mark - Private Methods -
 - (BOOL)baseinfoProcess:(UIImage *)image
-                    url:(NSURL * _Nonnull)url
+             identifier:(NSString * _Nonnull)identifier
             formatStyle:(QAImageFormatStyle)formatStyle
           fileSavedPath:(NSString * __strong *)fileSavedPath
                  format:(QAImageFormat * __strong *)format {
-    NSString *key = [url.absoluteString md5Hash];
+    NSString *key = [identifier md5Hash];
     NSString *fileSavedPath_tmp = [QAImageCachePath getImageCachedFilePath:key];
     if (!fileSavedPath_tmp) {
         return NO;
     }
     *fileSavedPath = fileSavedPath_tmp;
-    // NSLog(@"fileSavedPath: %@", fileSavedPath_tmp);
 
     QAImageFormat *format_tmp = [self.formatDic valueForKey:key];
     if (!format_tmp) {
@@ -157,7 +168,7 @@
     return YES;
 }
 - (void)getFormatWithKey:(NSString * _Nonnull)key completion:(void(^)(QAImageFormat *format))completion {
-    dispatch_async(self.queue, ^{
+    dispatch_sync(self.queue, ^{
         QAImageFormat *format = [self.formatDic valueForKey:key];
         if (completion) {
             completion(format);

@@ -60,9 +60,9 @@ static NSString *QAImageCache = @"QACachedImages";
          NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:@"https://upload-images.jianshu.io/upload_images/2748485-8caa321e4f1aadf5"]];
          UIImage *image = [UIImage imageWithData:data];
          */
-         UIImage *image = [UIImage imageNamed:@"ne_zha.jpg"];
+        UIImage *image = [UIImage imageNamed:@"ne_zha.jpg"];
         [[QAFastImageDiskCache sharedImageCache] cacheImage:image
-                                                        url:[NSURL URLWithString:@"test-url"]
+                                                 identifier:@"test-url"
                                                 formatStyle:QAImageFormatStyle_32BitBGRA];
     }
 }
@@ -101,9 +101,11 @@ static NSString *QAImageCache = @"QACachedImages";
     imageView.contentMode = UIViewContentModeScaleAspectFit;
     [self.view addSubview:imageView];
     
-    [[QAFastImageDiskCache sharedImageCache] requestDiskCachedImage:[NSURL URLWithString:@"test-url"]
+    [[QAFastImageDiskCache sharedImageCache] requestDiskCachedImage:@"test-url"
                                                          completion:^(UIImage * _Nullable image) {
         imageView.image = image;
+    } failed:^(NSString * _Nonnull identifierString, NSError * _Nullable error) {
+        
     }];
 }
 

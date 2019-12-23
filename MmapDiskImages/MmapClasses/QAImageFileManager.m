@@ -7,7 +7,6 @@
 //
 
 #import "QAImageFileManager.h"
-#import <sys/mman.h>
 #import <sys/stat.h>
 #import <malloc/malloc.h>
 #import <objc/runtime.h>
@@ -42,9 +41,9 @@ void (*mmapAction)(id, SEL, NSString *, QAImageMmapStyle, NSInteger, NSString *,
 
 @interface QAImageFileManager ()
 @property (nonatomic, assign) int fileDescriptor;
+@property (nonatomic) void *bytes;
 @property (nonatomic, assign) NSInteger imageLength;
 @property (nonatomic, assign) NSInteger totalLength;
-@property (nonatomic) void *bytes;
 @end
 
 
@@ -53,6 +52,7 @@ void (*mmapAction)(id, SEL, NSString *, QAImageMmapStyle, NSInteger, NSString *,
 #pragma mark - Life Cycle -
 - (void)dealloc {
     NSLog(@"%s", __func__);
+    [self clearTheBattlefield];
 }
 - (instancetype)init {
     if (self = [super init]) {
@@ -88,7 +88,7 @@ void (*mmapAction)(id, SEL, NSString *, QAImageMmapStyle, NSInteger, NSString *,
                                 bytesPerRow:bytesPerRow];
         
         [self flush];
-
+        
         {
             close(self.fileDescriptor);  // 关闭文件描述符
             munmap(self.bytes, self.totalLength);  // 解除映射
@@ -99,8 +99,6 @@ void (*mmapAction)(id, SEL, NSString *, QAImageMmapStyle, NSInteger, NSString *,
 - (UIImage *)processRequest:(NSString * _Nonnull)fileSavedPath
                imageFormart:(QAImageFormat * _Nullable)imageFormart {
     @autoreleasepool {
-        CFAbsoluteTime startTime_0 = CFAbsoluteTimeGetCurrent();
-
         CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
         CGColorRenderingIntent renderingIntent = kCGRenderingIntentDefault;
         __block CGBitmapInfo bitmapInfo = kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host;
@@ -123,10 +121,12 @@ void (*mmapAction)(id, SEL, NSString *, QAImageMmapStyle, NSInteger, NSString *,
         __weak typeof(self) weakSelf = self;
         
         mmapAction(self, mmapSelector, fileSavedPath, QAImageMmapStyle_Request, imageLength, nil, ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            
             if (CGSizeEqualToSize(pixelSize, CGSizeZero)) {
                 // "pixelSize|bytesPerPixel|bitsPerComponent|bitmapInfo|bytesPerRow"
                 char * imageFormatInfo_char = (char*)malloc(sizeof(char) * metaInfoSize);
-                memcpy(imageFormatInfo_char, (const void *)(weakSelf.bytes + weakSelf.imageLength), metaInfoSize);
+                memcpy(imageFormatInfo_char, (const void *)(strongSelf.bytes + strongSelf.imageLength), metaInfoSize);
                 NSString *imageFormatInfo = [[NSString alloc] initWithCString:imageFormatInfo_char
                                                                      encoding:NSASCIIStringEncoding];
 
@@ -140,7 +140,7 @@ void (*mmapAction)(id, SEL, NSString *, QAImageMmapStyle, NSInteger, NSString *,
             }
 
             // CGDataProviderCreateWithData(void * _Nullable info, const void * _Nullable data, size_t size, CGDataProviderReleaseDataCallback  _Nullable releaseData)
-            CGDataProviderRef dataProvider = CGDataProviderCreateWithData(NULL, weakSelf.bytes, weakSelf.imageLength, _QAReleaseImageData);
+            CGDataProviderRef dataProvider = CGDataProviderCreateWithData(NULL, strongSelf.bytes, strongSelf.imageLength, _QAReleaseImageData);
 
             // CGImageRef imageRef = CGImageCreate(size_t width, size_t height, size_t bitsPerComponent, size_t bitsPerPixel, size_t bytesPerRow, CGColorSpaceRef  _Nullable space, CGBitmapInfo bitmapInfo, CGDataProviderRef  _Nullable provider, const CGFloat * _Nullable decode, bool shouldInterpolate, CGColorRenderingIntent intent);
             CGImageRef imageRef = CGImageCreate(pixelSize.width, pixelSize.height, bitsPerComponent, bitsPerPixel, bytesPerRow, colorSpace, bitmapInfo, dataProvider, NULL, YES, renderingIntent);
@@ -158,9 +158,6 @@ void (*mmapAction)(id, SEL, NSString *, QAImageMmapStyle, NSInteger, NSString *,
             CGColorSpaceRelease(colorSpace);
             CGDataProviderRelease(dataProvider);
         });
-        CFAbsoluteTime endTime = CFAbsoluteTimeGetCurrent();
-        CFAbsoluteTime loadTime = endTime - startTime_0;
-        NSLog(@"loadTime(mmap): %f",loadTime);
         
         return cachedImage;
     }
@@ -192,19 +189,18 @@ void (*mmapAction)(id, SEL, NSString *, QAImageMmapStyle, NSInteger, NSString *,
                                  bitmapInfo:bitmapInfo
                                 bytesPerRow:bytesPerRow];
         [self flush];
-
-        close(self.fileDescriptor);  // 关闭文件描述符
-        munmap(self.bytes, self.totalLength);  // 解除映射
-        self.bytes = NULL;
+        [self clearTheBattlefield];
     }];
 }
 - (void)clearTheBattlefield {
     if (self.fileDescriptor >= 0) {
         int closeResult = close(self.fileDescriptor);  // 关闭文件描述符
-        NSLog(@"closeResult: %d",closeResult);
+        NSLog(@"关闭文件描述符: %d",closeResult);
     }
     if (self.bytes) {
-        munmap(self.bytes, self.totalLength);  // 解除映射
+        int closeResult = munmap(self.bytes, self.totalLength);  // 解除映射
+        self.bytes = NULL;
+        NSLog(@"解除映射: %d",closeResult);
     }
 }
 

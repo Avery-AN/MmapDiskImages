@@ -11,6 +11,7 @@
 
 typedef void (^QAImageCacheCompletionBlock)(void);
 typedef void (^QAImageRequestCompletionBlock)(UIImage * _Nullable image);
+typedef void (^QAImageRequestFailedBlock)(NSString * _Nonnull identifierString, NSError * _Nullable error);
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -19,25 +20,26 @@ NS_ASSUME_NONNULL_BEGIN
 + (instancetype)sharedImageCache;
 
 - (void)cacheImage:(UIImage * _Nonnull)image
-               url:(NSURL * _Nonnull)url
+        identifier:(NSString * _Nonnull)identifier
        formatStyle:(QAImageFormatStyle)formatStyle;
 
 - (void)cacheImage:(UIImage * _Nonnull)image
-               url:(NSURL * _Nonnull)url
+        identifier:(NSString * _Nonnull)identifier
        formatStyle:(QAImageFormatStyle)formatStyle
         completion:(QAImageCacheCompletionBlock _Nullable)completion;
 
 - (void)cacheFixedSizeImage:(UIImage * _Nonnull)image
-                        url:(NSURL * _Nonnull)url
+                 identifier:(NSString * _Nonnull)identifier
                 formatStyle:(QAImageFormatStyle)formatStyle;
 
 - (void)cacheFixedSizeImage:(UIImage * _Nonnull)image
-                        url:(NSURL * _Nonnull)url
+                 identifier:(NSString * _Nonnull)identifier
                 formatStyle:(QAImageFormatStyle)formatStyle
                  completion:(QAImageCacheCompletionBlock _Nullable)completion;
 
-- (void)requestDiskCachedImage:(NSURL * _Nonnull)url
-                    completion:(QAImageRequestCompletionBlock _Nullable)completion;
+- (void)requestDiskCachedImage:(NSString * _Nonnull)identifier
+                    completion:(QAImageRequestCompletionBlock _Nullable)completion
+                        failed:(QAImageRequestFailedBlock _Nullable)failed;
 
 @end
 

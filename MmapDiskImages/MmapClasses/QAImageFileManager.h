@@ -7,6 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <sys/mman.h>
 #import "QAImageFormat.h"
 
 NS_ASSUME_NONNULL_BEGIN
